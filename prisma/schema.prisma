@@ -1,0 +1,149 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id       Int      @id @default(autoincrement())
+  name     String   @unique
+  products Product[]
+}
+
+model Supplier {
+  id       Int      @id @default(autoincrement())
+  name     String
+  email    String?
+  phone    String?
+  products Product[]
+}
+
+model Product {
+  id                Int       @id @default(autoincrement())
+  name              String
+  description       String?
+  price             Float
+  quantity          Int       @default(0)
+  categoryId        Int
+  supplierId        Int
+  category          Category  @relation(fields: [categoryId], references: [id])
+  supplier          Supplier  @relation(fields: [supplierId], references: [id])
+  movements         Movement[]
+  entries           StockEntry[]
+  exits             StockExit[]
+  docLines          StockExitDocumentLine[]
+}
+
+model Movement {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  type      String   // "IN" ou "OUT"
+  quantity  Int
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id])
+}
+
+// Gestion des lots (entrées)
+model StockEntry {
+  id                  Int       @id @default(autoincrement())
+  productId           Int
+  quantity            Int
+  quantityUsed        Int       @default(0)
+  availableQuantity   Int
+  unitCost            Float
+  entryDate           DateTime  @default(now())
+  origin              String?
+  reason              String?
+  userId              String?
+  product             Product   @relation(fields: [productId], references: [id])
+  exitDetails         StockExitDetail[]
+  docLineDetails      StockExitDocumentLineDetail[]
+  
+  @@index([productId, entryDate])
+}
+
+// Sorties simples (simple produit, pour compatibilité)
+model StockExit {
+  id          Int       @id @default(autoincrement())
+  productId   Int
+  type        String    // "INDIVIDU" ou "SUPERVISEUR"
+  quantity    Int
+  totalCost   Float
+  exitDate    DateTime  @default(now())
+  origin      String?
+  reason      String?
+  userId      String?
+  product     Product   @relation(fields: [productId], references: [id])
+  details     StockExitDetail[]
+  
+  @@index([productId, exitDate])
+}
+
+// Traçabilité des sorties simples (détails FIFO par sortie)
+model StockExitDetail {
+  id        Int       @id @default(autoincrement())
+  exitId    Int
+  entryId   Int
+  quantity  Int
+  unitCost  Float
+  subtotal  Float
+  exit      StockExit @relation(fields: [exitId], references: [id], onDelete: Cascade)
+  entry     StockEntry @relation(fields: [entryId], references: [id])
+  
+  @@index([exitId])
+  @@index([entryId])
+}
+
+// Bon de sortie multi-produits
+model StockExitDocument {
+  id          Int       @id @default(autoincrement())
+  reference   String    @unique
+  type        String    // "INDIVIDU" ou "SUPERVISEUR"
+  totalCost   Float     @default(0)
+  documentDate DateTime @default(now())
+  reason      String?
+  userId      String?
+  lines       StockExitDocumentLine[]
+  
+  @@index([documentDate])
+}
+
+// Lignes du bon (une par produit)
+model StockExitDocumentLine {
+  id          Int       @id @default(autoincrement())
+  documentId  Int
+  productId   Int
+  quantity    Int
+  totalCost   Float     @default(0)
+  document    StockExitDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  product     Product   @relation(fields: [productId], references: [id])
+  details     StockExitDocumentLineDetail[]
+  
+  @@index([documentId])
+  @@index([productId])
+}
+
+// Traçabilité FIFO pour chaque ligne du bon
+model StockExitDocumentLineDetail {
+  id        Int       @id @default(autoincrement())
+  lineId    Int
+  entryId   Int
+  quantity  Int
+  unitCost  Float
+  subtotal  Float
+  line      StockExitDocumentLine @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  entry     StockEntry @relation(fields: [entryId], references: [id])
+  
+  @@index([lineId])
+  @@index([entryId])
+}
