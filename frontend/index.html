@@ -178,6 +178,7 @@
             color: var(--text-primary);
         }
 
+        /* form controls styling */
         input, select, textarea {
             width: 100%;
             padding: 10px 12px;
@@ -186,12 +187,23 @@
             font-size: 14px;
             font-family: inherit;
             transition: all 0.2s ease;
+            background: white;
         }
 
         input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        /* number input tweaks */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
         }
 
         .button-group {
@@ -804,7 +816,7 @@
                                 </label>
                                 <label style={{margin: 0}}>
                                     Quantité:
-                                    <input type="number" value={documentLineForm.quantity} onChange={(e) => setDocumentLineForm({...documentLineForm, quantity: Number(e.target.value)})} min="1" disabled={loading} />
+                                    <input type="number" value={documentLineForm.quantity} onChange={(e) => setDocumentLineForm({...documentLineForm, quantity: Number(e.target.value)})} min="1" disabled={loading} onWheel={(e)=>e.target.blur()} onKeyDown={(e)=>{ if(e.key==='ArrowUp' || e.key==='ArrowDown') e.preventDefault(); }} onFocus={(e)=>{ if(e.target.value==='0'){ setDocumentLineForm({...documentLineForm, quantity: ''}); } }} />
                                 </label>
                                 <button type="button" onClick={handleAddLineToDocument} disabled={loading || !documentLineForm.productId}>➕ Ajouter ligne</button>
                             </div>
@@ -845,7 +857,7 @@
                                     <div><strong>Référence:</strong> {doc.reference}</div>
                                     <div><strong>Date:</strong> {new Date(doc.documentDate).toLocaleDateString('fr-FR')}</div>
                                     <div><strong>Type:</strong> <span className="badge badge-primary">{doc.type}</span></div>
-                                    <div><strong>Coût total:</strong> <strong>{doc.totalCost?.toFixed(2)} €</strong></div>
+                                    <div><strong>Coût total:</strong> <strong>{doc.totalCost?.toFixed(2)} FCFA</strong></div>
                                     {doc.lines && doc.lines.length > 0 && (
                                         <div style={{marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #ddd'}}>
                                             <strong>Lignes ({doc.lines.length}):</strong>
@@ -853,14 +865,14 @@
                                                 <div key={i} style={{marginTop: '8px', paddingLeft: '12px', fontSize: '13px'}}>
                                                     <div><strong>• {line.product?.name}</strong></div>
                                                     <div style={{marginLeft: '12px', color: 'var(--text-secondary)'}}>
-                                                        Quantité: {line.quantity} | Coût: {line.totalCost?.toFixed(2)} €
+                                                        Quantité: {line.quantity} | Coût: {line.totalCost?.toFixed(2)} FCFA
                                                     </div>
                                                     {line.details && line.details.length > 0 && (
                                                         <div style={{marginLeft: '12px', fontSize: '12px', marginTop: '4px'}}>
                                                             <em>Détails FIFO:</em>
                                                             {line.details.map((d, j) => (
                                                                 <div key={j} style={{marginLeft: '8px'}}>
-                                                                    ◦ Lot {new Date(d.entry?.entryDate).toLocaleDateString('fr-FR')}: {d.quantity} × {d.unitCost?.toFixed(2)} € = {d.subtotal?.toFixed(2)} €
+                                                                    ◦ Lot {new Date(d.entry?.entryDate).toLocaleDateString('fr-FR')}: {d.quantity} × {d.unitCost?.toFixed(2)} FCFA = {d.subtotal?.toFixed(2)} FCFA
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -931,8 +943,8 @@
                                     {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
                             </label>
-                            <label>Quantité: <input type="number" value={entryForm.quantity} onChange={(e) => setEntryForm({...entryForm, quantity: Number(e.target.value)})} min="1" disabled={loading} /></label>
-                            <label>Prix unitaire (€): <input type="number" value={entryForm.unitCost} onChange={(e) => setEntryForm({...entryForm, unitCost: Number(e.target.value)})} min="0" step="0.01" disabled={loading} /></label>
+                            <label>Quantité: <input type="number" value={entryForm.quantity} onChange={(e) => setEntryForm({...entryForm, quantity: Number(e.target.value)})} min="1" disabled={loading} onWheel={(e)=>e.target.blur()} onKeyDown={(e)=>{ if(e.key==='ArrowUp' || e.key==='ArrowDown') e.preventDefault(); }} onFocus={(e)=>{ if(e.target.value==='0'){ setEntryForm({...entryForm, quantity: ''}); } }} /></label>
+                            <label>Prix unitaire (FCFA): <input type="number" value={entryForm.unitCost} onChange={(e) => setEntryForm({...entryForm, unitCost: Number(e.target.value)})} min="0" step="0.01" disabled={loading} onWheel={(e)=>e.target.blur()} onKeyDown={(e)=>{ if(e.key==='ArrowUp' || e.key==='ArrowDown') e.preventDefault(); }} onFocus={(e)=>{ if(e.target.value==='0'){ setEntryForm({...entryForm, unitCost: ''}); } }} /></label>
                             <label>Origine (optionnel): <input type="text" value={entryForm.origin} onChange={(e) => setEntryForm({...entryForm, origin: e.target.value})} placeholder="Ex: Fournisseur A" disabled={loading} /></label>
                             <button type="submit" disabled={loading || !entryForm.productId}>{loading ? 'Création...' : '➕ Créer le lot'}</button>
                         </form>
@@ -948,7 +960,7 @@
                                     <div><strong>Quantité initiale:</strong> {entry.quantity}</div>
                                     <div><strong>Disponible:</strong> <span className={entry.availableQuantity > 0 ? 'status-available' : 'status-depleted'}>{entry.availableQuantity}</span></div>
                                     <div><strong>Consommé:</strong> {entry.quantityUsed}</div>
-                                    <div><strong>Prix unitaire:</strong> {entry.unitCost?.toFixed(2)} € (Total lot: <strong>{(entry.quantity * entry.unitCost).toFixed(2)} €</strong>)</div>
+                                    <div><strong>Prix unitaire:</strong> {entry.unitCost?.toFixed(2)} FCFA (Total lot: <strong>{(entry.quantity * entry.unitCost).toFixed(2)} FCFA</strong>)</div>
                                     <div><strong>Origine:</strong> {entry.origin || 'N/A'}</div>
                                 </div>
                             ))
@@ -977,7 +989,7 @@
                                     <option value="SUPERVISEUR">SUPERVISEUR</option>
                                 </select>
                             </label>
-                            <label>Quantité à sortir: <input type="number" value={exitForm.quantity} onChange={(e) => setExitForm({...exitForm, quantity: Number(e.target.value)})} min="1" disabled={loading} /></label>
+                            <label>Quantité à sortir: <input type="number" value={exitForm.quantity} onChange={(e) => setExitForm({...exitForm, quantity: Number(e.target.value)})} min="1" disabled={loading} onWheel={(e)=>e.target.blur()} onKeyDown={(e)=>{ if(e.key==='ArrowUp' || e.key==='ArrowDown') e.preventDefault(); }} onFocus={(e)=>{ if(e.target.value==='0'){ setExitForm({...exitForm, quantity: ''}); } }} /></label>
                             <label>Raison (optionnel): <input type="text" value={exitForm.reason} onChange={(e) => setExitForm({...exitForm, reason: e.target.value})} placeholder="Ex: Vente, Déclassement" disabled={loading} /></label>
                             <button type="submit" disabled={loading || !exitForm.productId}>{loading ? 'Traitement...' : '📤 Enregistrer sortie'}</button>
                         </form>
@@ -991,14 +1003,14 @@
                                     <div><strong>Produit:</strong> {exit.product?.name || 'N/A'}</div>
                                     <div><strong>Date:</strong> {new Date(exit.exitDate).toLocaleDateString('fr-FR')}</div>
                                     <div><strong>Quantité sortie:</strong> {exit.quantity}</div>
-                                    <div><strong>Coût total:</strong> <strong>{exit.totalCost?.toFixed(2)} €</strong></div>
+                                    <div><strong>Coût total:</strong> <strong>{exit.totalCost?.toFixed(2)} FCFA</strong></div>
                                     <div><strong>Raison:</strong> {exit.reason || 'N/A'}</div>
                                     {exit.details && exit.details.length > 0 && (
                                         <div style={{marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #ddd'}}>
                                             <strong>Détails FIFO:</strong>
                                             {exit.details.map((d, i) => (
                                                 <div key={i} style={{fontSize: '12px', marginTop: '4px', paddingLeft: '12px'}}>
-                                                    • Lot du {new Date(d.entry?.entryDate).toLocaleDateString('fr-FR')} : {d.quantity} × {d.entry?.unitCost?.toFixed(2)} € = {(d.quantity * d.entry?.unitCost).toFixed(2)} €
+                                                    • Lot du {new Date(d.entry?.entryDate).toLocaleDateString('fr-FR')} : {d.quantity} × {d.entry?.unitCost?.toFixed(2)} FCFA = {(d.quantity * d.entry?.unitCost).toFixed(2)} FCFA
                                                 </div>
                                             ))}
                                         </div>

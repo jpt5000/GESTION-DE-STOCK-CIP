@@ -53,7 +53,7 @@ async function runExample() {
 
     console.log('=== Étape 1 : Créer plusieurs lots avec des prix différents ===\n');
 
-    // Lot 1 : 100 unités à 10€
+    // Lot 1 : 100 unités à 10 FCFA
     const lot1 = await lotService.createStockEntry({
       productId,
       quantity: 100,
@@ -62,10 +62,10 @@ async function runExample() {
       reason: 'Réception commande fournisseur A',
       userId: 'user_1'
     });
-    console.log(`✅ Lot 1 créé: ${lot1.quantity} unités à ${lot1.unitCost}€`);
+    console.log(`✅ Lot 1 créé: ${lot1.quantity} unités à ${lot1.unitCost} FCFA`);
     console.log(`   Stock total: ${lot1.stockAfter} unités\n`);
 
-    // Lot 2 : 50 unités à 12€ (prix plus élevé)
+    // Lot 2 : 50 unités à 12 FCFA (prix plus élevé)
     const lot2 = await lotService.createStockEntry({
       productId,
       quantity: 50,
@@ -74,10 +74,10 @@ async function runExample() {
       reason: 'Réception commande fournisseur B',
       userId: 'user_1'
     });
-    console.log(`✅ Lot 2 créé: ${lot2.quantity} unités à ${lot2.unitCost}€`);
+    console.log(`✅ Lot 2 créé: ${lot2.quantity} unités à ${lot2.unitCost} FCFA`);
     console.log(`   Stock total: ${lot2.stockAfter} unités\n`);
 
-    // Lot 3 : 75 unités à 9.50€ (prix moins cher)
+    // Lot 3 : 75 unités à 9.50 FCFA (prix moins cher)
     const lot3 = await lotService.createStockEntry({
       productId,
       quantity: 75,
@@ -86,20 +86,20 @@ async function runExample() {
       reason: 'Réception commande fournisseur A (prix promotionnel)',
       userId: 'user_1'
     });
-    console.log(`✅ Lot 3 créé: ${lot3.quantity} unités à ${lot3.unitCost}€`);
+    console.log(`✅ Lot 3 créé: ${lot3.quantity} unités à ${lot3.unitCost} FCFA`);
     console.log(`   Stock total: ${lot3.stockAfter} unités\n`);
 
     console.log('=== Étape 2 : Afficher les lots disponibles (ordre FIFO) ===\n');
     const lots = await lotService.getProductLots(productId);
     lots.forEach((lot, index) => {
-      console.log(`Lot ${index + 1}: ${lot.availableQuantity}/${lot.quantity} unités disponibles à ${lot.unitCost}€ (entrée: ${lot.entryDate.toISOString().split('T')[0]})`);
+      console.log(`Lot ${index + 1}: ${lot.availableQuantity}/${lot.quantity} unités disponibles à ${lot.unitCost} FCFA (entrée: ${lot.entryDate.toISOString().split('T')[0]})`);
     });
     console.log('');
 
     console.log('=== Étape 3 : Sortie de 120 unités (consomme plusieurs lots) ===\n');
     console.log('📝 Cette sortie va consommer :');
-    console.log('   - 100 unités du Lot 1 (10€) = 1000€');
-    console.log('   - 20 unités du Lot 2 (12€) = 240€');
+    console.log('   - 100 unités du Lot 1 (10 FCFA) = 1000 FCFA');
+    console.log('   - 20 unités du Lot 2 (12 FCFA) = 240 FCFA');
     console.log('   - Coût total attendu : 1240€\n');
 
     const exit1 = await lotService.createStockExit({

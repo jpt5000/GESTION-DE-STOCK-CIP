@@ -1,27 +1,18 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
-// ============================================================================
-// CHOISIR UNE SEULE OPTION CI-DESSOUS :
-// ============================================================================
-
-// OPTION 1 : SQLite (Simple, pas besoin de serveur - recommandé pour dev)
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
-
-// OPTION 2 : MySQL (Pour Docker ou MySQL local)
-// Décommentez cette section et commentez la section SQLite ci-dessus
-// datasource db {
-//   provider = "mysql"
-//   url      = env("DATABASE_URL")
-// }
 
 model Category {
   id       Int       @id @default(autoincrement())
@@ -31,94 +22,128 @@ model Category {
 
 model Supplier {
   id       Int       @id @default(autoincrement())
-  name     String
+  name     String    @unique
   email    String?
   phone    String?
   products Product[]
 }
 
 model Product {
-  id           Int          @id @default(autoincrement())
-  name         String
-  description  String?
-  price        Float // Prix de vente (peut être calculé depuis les lots)
-  quantity     Int          @default(0) // Quantité totale (calculée depuis les lots)
-  categoryId   Int
-  supplierId   Int
-  category     Category     @relation(fields: [categoryId], references: [id])
-  supplier     Supplier     @relation(fields: [supplierId], references: [id])
-  movements    Movement[]
-  stockEntries StockEntry[] // Lots d'entrée de stock
-  stockExits   StockExit[] // Sorties de stock
+  id          Int                     @id @default(autoincrement())
+  name        String                  @unique
+  description String?
+  price       Float
+  quantity    Int                     @default(0)
+  categoryId  Int
+  supplierId  Int
+  category    Category                @relation(fields: [categoryId], references: [id])
+  supplier    Supplier                @relation(fields: [supplierId], references: [id])
+  movements   Movement[]
+  entries     StockEntry[]
+  exits       StockExit[]
+  docLines    StockExitDocumentLine[]
 }
 
-// Lot d'entrée de stock - Chaque entrée crée un lot distinct avec son propre prix d'achat
+model Movement {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  type      String // "IN" ou "OUT"
+  quantity  Int
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id])
+}
+
+// Gestion des lots (entrées)
 model StockEntry {
-  id                Int      @id @default(autoincrement())
+  id                Int                           @id @default(autoincrement())
   productId         Int
-  quantity          Int // Quantité totale du lot
-  quantityUsed      Int      @default(0) // Quantité déjà utilisée dans les sorties
-  availableQuantity Int // Calculé: quantity - quantityUsed (maintenu pour performance)
-  unitCost          Float // Prix d'achat unitaire du lot
-  entryDate         DateTime @default(now())
-  origin            String? // Origine de l'entrée (ex: COMMANDE_123)
-  reason            String? // Raison de l'entrée
-  userId            String? // Utilisateur qui a créé l'entrée
+  quantity          Int
+  quantityUsed      Int                           @default(0)
+  availableQuantity Int
+  unitCost          Float
+  entryDate         DateTime                      @default(now())
+  origin            String?
+  reason            String?
+  userId            String?
+  product           Product                       @relation(fields: [productId], references: [id])
+  exitDetails       StockExitDetail[]
+  docLineDetails    StockExitDocumentLineDetail[]
 
-  product     Product           @relation(fields: [productId], references: [id])
-  exitDetails StockExitDetail[] // Détails des sorties qui ont consommé ce lot
-
-  // Index pour optimiser les requêtes FIFO
   @@index([productId, entryDate])
 }
 
-// Sortie de stock - Peut être de type INDIVIDU ou SUPERVISEUR
+// Sorties simples (simple produit, pour compatibilité)
 model StockExit {
-  id        Int      @id @default(autoincrement())
+  id        Int               @id @default(autoincrement())
   productId Int
   type      String // "INDIVIDU" ou "SUPERVISEUR"
-  quantity  Int // Quantité totale sortie
-  totalCost Float // Coût total calculé: somme des (quantité × prix d'achat par lot)
-  exitDate  DateTime @default(now())
-  origin    String? // Origine de la sortie (ex: VENTE_456)
-  reason    String? // Raison de la sortie
-  userId    String? // Utilisateur qui a créé la sortie
-
-  product Product           @relation(fields: [productId], references: [id])
-  details StockExitDetail[] // Détails des lots consommés
+  quantity  Int
+  totalCost Float
+  exitDate  DateTime          @default(now())
+  origin    String?
+  reason    String?
+  userId    String?
+  product   Product           @relation(fields: [productId], references: [id])
+  details   StockExitDetail[]
 
   @@index([productId, exitDate])
 }
 
-// Détail d'une sortie de stock - Traçabilité complète: chaque lot consommé par une sortie est enregistré
+// Traçabilité des sorties simples (détails FIFO par sortie)
 model StockExitDetail {
-  id       Int   @id @default(autoincrement())
-  exitId   Int // ID de la sortie
-  entryId  Int // ID du lot consommé
-  quantity Int // Quantité prélevée sur ce lot
-  unitCost Float // Prix d'achat unitaire du lot au moment de la sortie
-  subtotal Float // Coût pour ce lot: quantity × unitCost
-
-  exit  StockExit  @relation(fields: [exitId], references: [id], onDelete: Cascade)
-  entry StockEntry @relation(fields: [entryId], references: [id])
+  id       Int        @id @default(autoincrement())
+  exitId   Int
+  entryId  Int
+  quantity Int
+  unitCost Float
+  subtotal Float
+  exit     StockExit  @relation(fields: [exitId], references: [id], onDelete: Cascade)
+  entry    StockEntry @relation(fields: [entryId], references: [id])
 
   @@index([exitId])
   @@index([entryId])
 }
 
-// Mouvement de stock (ancien système - conservé pour compatibilité)
-// Peut être utilisé pour les ajustements et autres mouvements non liés aux lots
-model Movement {
-  id        Int      @id @default(autoincrement())
-  productId Int
-  type      String // IN, OUT, ou ADJUSTMENT (SQLite ne supporte pas les enums natifs)
-  quantity  Int // Toujours positif pour IN/ADJUSTMENT+, négatif pour OUT/ADJUSTMENT-
-  origin    String? // Origine du mouvement (ex: "COMMANDE_123", "INVENTAIRE", "VENTE_456")
-  reason    String? // Raison/motif du mouvement (ex: "Réception commande", "Inventaire physique")
-  userId    String? // Identifiant utilisateur qui a effectué le mouvement (pour traçabilité)
-  createdAt DateTime @default(now())
-  product   Product  @relation(fields: [productId], references: [id])
+// Bon de sortie multi-produits
+model StockExitDocument {
+  id           Int                     @id @default(autoincrement())
+  reference    String                  @unique
+  type         String // "INDIVIDU" ou "SUPERVISEUR"
+  totalCost    Float                   @default(0)
+  documentDate DateTime                @default(now())
+  reason       String?
+  userId       String?
+  lines        StockExitDocumentLine[]
 
-  // Index pour optimiser les requêtes de calcul de stock
-  @@index([productId, createdAt])
+  @@index([documentDate])
+}
+
+// Lignes du bon (une par produit)
+model StockExitDocumentLine {
+  id         Int                           @id @default(autoincrement())
+  documentId Int
+  productId  Int
+  quantity   Int
+  totalCost  Float                         @default(0)
+  document   StockExitDocument             @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  product    Product                       @relation(fields: [productId], references: [id])
+  details    StockExitDocumentLineDetail[]
+
+  @@index([documentId])
+  @@index([productId])
+}
+
+// Traçabilité FIFO pour chaque ligne du bon
+model StockExitDocumentLineDetail {
+  id       Int                   @id @default(autoincrement())
+  lineId   Int
+  entryId  Int
+  quantity Int
+  unitCost Float
+  subtotal Float
+  line     StockExitDocumentLine @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  entry    StockEntry            @relation(fields: [entryId], references: [id])
+
+  @@index([lineId])
+  @@index([entryId])
 }

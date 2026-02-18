@@ -12283,14 +12283,14 @@ export namespace Prisma {
 
   export type SupplierWhereUniqueInput = Prisma.AtLeast<{
     id?: number
+    name?: string
     AND?: SupplierWhereInput | SupplierWhereInput[]
     OR?: SupplierWhereInput[]
     NOT?: SupplierWhereInput | SupplierWhereInput[]
-    name?: StringFilter<"Supplier"> | string
     email?: StringNullableFilter<"Supplier"> | string | null
     phone?: StringNullableFilter<"Supplier"> | string | null
     products?: ProductListRelationFilter
-  }, "id">
+  }, "id" | "name">
 
   export type SupplierOrderByWithAggregationInput = {
     id?: SortOrder
@@ -12351,10 +12351,10 @@ export namespace Prisma {
 
   export type ProductWhereUniqueInput = Prisma.AtLeast<{
     id?: number
+    name?: string
     AND?: ProductWhereInput | ProductWhereInput[]
     OR?: ProductWhereInput[]
     NOT?: ProductWhereInput | ProductWhereInput[]
-    name?: StringFilter<"Product"> | string
     description?: StringNullableFilter<"Product"> | string | null
     price?: FloatFilter<"Product"> | number
     quantity?: IntFilter<"Product"> | number
@@ -12366,7 +12366,7 @@ export namespace Prisma {
     entries?: StockEntryListRelationFilter
     exits?: StockExitListRelationFilter
     docLines?: StockExitDocumentLineListRelationFilter
-  }, "id">
+  }, "id" | "name">
 
   export type ProductOrderByWithAggregationInput = {
     id?: SortOrder
